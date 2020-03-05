@@ -349,16 +349,17 @@ class TraceContainer:
         self.stoi = fretti.math.calc_S(self.get_intensities())
 
 
-data_dir = Path("/Users/mag/Documents/study/phd/deepFRET_kinSoft/expSet1")
+data_dirs = list(d for d in Path("/Users/mag/Documents/study/phd/deepFRET_kinSoft/").iterdir() if 'exp' in str(d))
+# data_dir = Path("/Users/mag/Documents/study/phd/deepFRET_kinSoft/expSet1")
 # TODO edit these to be argparse names
 n_traces = None
 
 traces = {}
 trace_paths = []
-
-for _trace_path in data_dir.iterdir():
-    if _trace_path.suffix == '.dat':
-        trace_paths.append(_trace_path)
+for data_dir in data_dirs:
+    for _trace_path in data_dir.iterdir():
+        if _trace_path.suffix == '.dat':
+            trace_paths.append(_trace_path)
 
 if n_traces is not None:
     trace_paths = trace_paths[:n_traces]
@@ -383,8 +384,6 @@ AA = np.concatenate(AA)
 E_trace = np.concatenate(E).reshape(-1, 1)
 
 E_dist = np.concatenate([e[0:20] for e in E]).reshape(-1, 1)
-print(E_dist.shape)
-print(E_trace.shape)
 
 if fretti.math.contains_nan(AA):
     X = np.column_stack((DD, DA))
@@ -426,16 +425,16 @@ for l, trace in zip(lengths, traces.values()):
 
 transitions = pd.concat([trace.transitions for trace in traces.values()])
 
+transition_dict = {}
+
 for _, t in transitions.groupby(["state", "state+1"]):
     s_before = t["state"].values[0]
     s_after = t["state+1"].values[0]
 
     if transmat[s_before, s_after] == 0:
         continue
-
-    print(
-        "{} -> {}".format(t["state"].values[0], t["state+1"].values[0])
-    )
+    transition_name = "{} -> {}".format(t["state"].values[0], t["state+1"].values[0])
+    print(transition_name)
     print("number of datapoints: ", len(t["lifetime"]))
 
     try:
@@ -467,12 +466,16 @@ for _, t in transitions.groupby(["state", "state+1"]):
         print(fretti.utils.nice_string_output(names, values, 2))
         if _b == "DOUBLE":
             print("This is a degenerate state!")
+            transition_dict[transition_name] = True
+        else:
+            transition_dict[transition_name] = False
         print('\n')
 
     except RuntimeError:
         print("Couldn't fit. Skipping")
         continue
-    print()
+
+print(transition_dict)
 
 # do magic hmm
 
